@@ -1,0 +1,143 @@
+name: Lumo APK bauen
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      veroeffentlichen:
+        description: 'APK als Download-Link veröffentlichen (ohne Konto abrufbar)?'
+        type: boolean
+        default: false
+      version:
+        description: 'Versionsname für den Link, z. B. 1.17'
+        required: false
+        default: '1.17'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Umgebung prüfen und Struktur begradigen
+        run: |
+          echo "=============================================="
+          echo " Was liegt im Repository?"
+          echo "=============================================="
+          ls -1
+
+          # Häufiger Fall: alles steckt in einem Unterordner (z. B. "Lumo").
+          if [ ! -d docs ]; then
+            TIEFER=$(find . -maxdepth 3 -type d -name docs -not -path "./node_modules/*" | head -1)
+            if [ -n "$TIEFER" ]; then
+              OBEN=$(dirname "$TIEFER")
+              echo ""
+              echo ">> Das Projekt liegt in '$OBEN' statt im Hauptverzeichnis."
+              echo ">> Ich hole den Inhalt für diesen Build eine Ebene hoch."
+              shopt -s dotglob
+              mv "$OBEN"/* . 2>/dev/null || true
+              shopt -u dotglob
+              echo ">> Bitte im Repository trotzdem den Inhalt des Ordners hochladen, nicht den Ordner selbst."
+            fi
+          fi
+
+          echo ""
+          echo "=============================================="
+          for n in docs android-res scripts capacitor.config.json package.json; do
+            [ -e "$n" ] && echo "  ✓ $n" || echo "  ✗ $n FEHLT"
+          done
+          echo "=============================================="
+
+          if [ ! -f docs/index.html ]; then
+            echo ""
+            echo "ABBRUCH: 'docs/index.html' ist nirgends zu finden."
+            echo "Ohne die App selbst kann nichts gebaut werden."
+            echo "Lade den INHALT des Projektordners hoch (Cmd+A im Finder), nicht den Ordner."
+            exit 1
+          fi
+          node -v && npm -v && java -version
+          test -f docs/index.html || { echo "FEHLER: docs/index.html fehlt"; exit 1; }
+          test -f capacitor.config.json || { echo "FEHLER: capacitor.config.json fehlt"; exit 1; }
+
+      - name: Capacitor installieren
+        run: |
+          set -e
+          # Kern erst allein – daran darf nichts scheitern
+          npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+          # Mitteilungs-Plugin ist Zubehör: passende Fassung suchen, sonst ohne weitermachen
+          if npm install --no-audit --no-fund @capacitor/local-notifications@^7 2>/dev/null; then
+            echo "✓ Mitteilungs-Plugin (7.x) installiert"
+          elif npm install --no-audit --no-fund @capacitor/local-notifications 2>/dev/null; then
+            echo "✓ Mitteilungs-Plugin (neueste Fassung) installiert"
+          else
+            echo ":: warning ::Mitteilungs-Plugin liess sich nicht installieren – die App wird ohne Systemmitteilungen gebaut."
+          fi
+          echo "--- Installierte Capacitor-Pakete ---"
+          npm ls --depth=0 2>/dev/null | grep -i capacitor || true
+
+      - name: Android-Projekt erzeugen
+        run: npx cap add android
+
+      - name: Icons und Berechtigungen
+        run: |
+          if [ -f scripts/android-setup.sh ]; then
+            bash scripts/android-setup.sh
+          else
+            echo ":: warning ::scripts/android-setup.sh fehlt – ohne sie gibt es Standard-Icons."
+          fi
+
+      - name: Web-Dateien übernehmen
+        run: npx cap sync android
+
+      - name: APK bauen
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Gegenprobe – steckt das Lumo-Icon drin?
+        run: |
+          A=android/app/build/outputs/apk/debug/app-debug.apk
+          if unzip -l "$A" | grep -q "mipmap-xxxhdpi.*ic_launcher_background.png"; then
+            echo "✓ Lumo-Icon ist in der APK."
+          else
+            echo ":: warning ::In der APK stecken die grauen Standard-Icons."
+            echo ":: warning ::Grund: der Ordner 'android-res' fehlt im Repository."
+            echo ":: warning ::Lade ihn mit hoch und starte den Build neu."
+          fi
+          unzip -l "$A" | grep mipmap | head -20
+
+      - name: APK hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumo-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Als Download-Link veröffentlichen
+        if: github.event_name == 'workflow_dispatch' && inputs.veroeffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="v${{ inputs.version }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "Lumo-$V.apk"
+          gh release delete "$V" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$V" "Lumo-$V.apk" --title "Lumo $V" --notes "Android-App zum Ausprobieren.
+
+          **Installieren:** Die Datei unten antippen, herunterladen und öffnen. Android fragt einmal, ob es Apps aus dieser Quelle installieren darf — das erlauben.
+
+          Kein Konto nötig. Alle Daten bleiben auf deinem Gerät. Wer lieber nichts installiert, öffnet die Webseite des Projekts."
+          echo "Fertig. Link:"
+          gh release view "$V" --json url -q .url
