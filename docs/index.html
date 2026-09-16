@@ -301,7 +301,13 @@ footer.foot{color:var(--muted);font-size:11.5px;line-height:1.65;text-align:cent
   .wrap{padding-bottom:126px}
   #tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:var(--bg);background:color-mix(in srgb,var(--bg) 94%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--edge)}
-  #tabs button{flex:1;text-align:center;font-size:11.5px;padding:10px 4px;border-radius:12px}
+  #tabs{gap:2px;padding-left:6px;padding-right:6px}
+  #tabs button{flex:1;text-align:center;font-size:10.5px;padding:10px 1px;border-radius:12px;letter-spacing:-.02em}
+  #tabs .dot{margin-left:3px;width:5px;height:5px}
+}
+@media(max-width:400px){
+  #tabs button{font-size:9.5px;padding:10px 0;letter-spacing:-.03em}
+  #tabs button .dot{margin-left:3px;width:5px;height:5px}
   #shopTabs{position:static;background:none;border:0;-webkit-backdrop-filter:none;backdrop-filter:none;padding:2px 0}
   #sky{height:248px}
   .top-in{padding:10px 14px;gap:10px}
@@ -587,6 +593,9 @@ select{border-radius:999px}
   .chip{padding:7px 10px;font-size:12.5px;gap:6px}
   .xpwrap .xpbar{min-width:58px}
 }
+@media(max-width:400px){
+  #tabs button{font-size:10px;padding:10px 1px}
+}
 @media(max-width:370px){
   .chip{padding:6px 9px}
   .xpwrap #xpText{display:none}
@@ -634,6 +643,16 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tb-gross{font-family:var(--font-display);font-size:19px;line-height:1.7;margin:22px 0 0;
   padding:18px 20px;background:var(--bg2);border-radius:var(--r-sm);border-left:3px solid var(--mood)}
+
+.anstoss{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:13px 15px;
+  border-radius:var(--r-sm);background:var(--bg2);border:1px dashed var(--edge);transition:.16s}
+.anstoss:hover{border-color:var(--mood)}
+.anstoss span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);flex:none}
+.anstoss i{font-style:normal;font-family:var(--font-display);font-size:16px;line-height:1.4}
+.tb-stift{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;
+  background:var(--panel2);border:1px solid var(--edge);color:var(--accent);font-size:15px}
+.tb.frei{border-left:3px solid var(--accent)}
+#tbText{min-height:180px;font-size:16px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -663,6 +682,7 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
     <button data-view="music">Musik</button>
     <button data-view="quest">Quests <span class="dot hidden" id="questDot"></span></button>
     <button data-view="shop">Shop</button>
+    <button data-view="tage">Tagebuch</button>
     <button data-view="log">Verlauf</button>
   </nav>
 
@@ -693,6 +713,7 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
         <button class="btn primary" data-go="check">Check-in starten</button>
         <button class="btn" data-go="quest">Offene Quests <span id="questCount" style="font-family:var(--font-mono);color:var(--muted)">(0)</span></button>
         <button class="btn ghost" id="quickBtn">Schnell-Check-in</button>
+        <button class="btn ghost" data-go="tage">Etwas aufschreiben</button>
         <button class="btn ghost" data-go="music">Direkt zur Musik</button>
       </div>
       <div id="earlyBox"></div>
@@ -867,17 +888,27 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
     </div>
   </section>
 
+  <section class="view" id="v-tage">
+    <div class="card" style="margin-top:14px">
+      <p class="eyebrow">Tagebuch</p>
+      <h2 class="title">Was du aufgeschrieben hast.</h2>
+      <p class="lede">Notizen aus deinen Check-ins und alles, was du sonst festhalten willst — nach Tagen sortiert. Antippen öffnet den ganzen Eintrag. Alles bleibt auf diesem Gerät.</p>
+      <div id="tagebuchZiel"></div>
+    </div>
+  </section>
+
   <!-- ============ LOG ============ -->
   <section class="view" id="v-log">
     <div class="card" style="margin-top:14px">
       <p class="eyebrow">Verlauf</p>
       <h2 class="title">Deine letzten Sterne.</h2>
-      <p class="lede" style="margin-bottom:0">Alles, was sich aus deinen Check-ins ergibt. Einstellungen findest du oben rechts unter dem Zahnrad.</p>
+      <p class="lede" style="margin-bottom:0">Alles, was sich aus deinen Check-ins ergibt. Deine Notizen stehen im Reiter <i>Tagebuch</i>, Einstellungen oben rechts unter dem Zahnrad.</p>
       <div class="split" style="margin:16px 0">
         <div class="meter"><div class="k">Check-ins</div><div class="v" id="stCount">0</div></div>
         <div class="meter"><div class="k">Quests erledigt</div><div class="v" id="stQuests">0</div></div>
         <div class="meter"><div class="k">Schnitt Stimmung</div><div class="v" id="stAvg">—</div></div>
         <div class="meter"><div class="k">Musikzeit</div><div class="v" id="stTime">0 min</div></div>
+      <div class="meter"><div class="k">Tagebuch</div><div class="v" id="stNotiz">0</div></div>
       </div>
       <div class="card" id="remindBox" style="background:var(--bg2);margin:20px 0">
         <p class="eyebrow">Erinnerung</p>
@@ -917,12 +948,13 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
       <p class="eyebrow" style="margin-top:22px">Sammlung <span id="findCount" style="color:var(--accent)"></span></p>
       <p class="move-hint" style="margin:0 0 12px">Fundstücke bringst du von Outdoor-Quests mit. Seltene geben mehr Gold.</p>
       <div class="find-grid" id="findGrid"></div>
-      <p class="eyebrow" style="margin-top:22px">Tagebuch</p>
-      <p class="move-hint" style="margin:0 0 12px">Alles, was du geschrieben hast, mit Datum und Uhrzeit. Antippen öffnet den ganzen Eintrag.</p>
-      <div class="seg" id="logSeg" style="margin-bottom:14px">
-        <button data-f="alle" aria-pressed="true">Alle</button><button data-f="text">Nur mit Notiz</button>
+      <div id="tagebuchBlock">
+        <div class="btn-row" style="margin:0 0 14px"><button class="btn primary" id="tbNeu" style="width:100%">Etwas aufschreiben</button></div>
+        <div class="seg" id="logSeg" style="margin-bottom:14px">
+          <button data-f="alle" aria-pressed="true">Alle</button><button data-f="text">Mit Text</button><button data-f="frei">Nur Notizen</button>
+        </div>
+        <div id="logList"></div>
       </div>
-      <div id="logList"></div>
       <div id="dataBox"><div class="note" id="backupNote"><b>Sicherung anlegen.</b> Speichert Level, Gold, Skins und den ganzen Verlauf als Datei. Auf dem iPhone lohnt sich das: iOS räumt Web-Daten von selten genutzten Seiten irgendwann weg.</div>
       <div class="btn-row">
         <button class="btn" id="expBtn">Sicherung speichern</button>
@@ -937,7 +969,7 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
   <footer class="foot">
     <button class="btn" id="ankerLink" style="font-size:13px;padding:10px 20px;margin-bottom:10px">Anker — wenn es zu viel wird</button><br>
     <button class="btn ghost" id="helpLink" style="font-size:12.5px;padding:9px 16px;margin-bottom:12px">Notfall-Nummern</button><br>
-    <span id="buildTag" style="font-family:var(--font-mono);letter-spacing:.1em">v1.15 · Testphase</span><br>
+    <span id="buildTag" style="font-family:var(--font-mono);letter-spacing:.1em">v1.17 · Testphase</span><br>
     Lumo ist ein Selbsthilfe-Werkzeug und ersetzt keine Therapie.<br>
     Wenn es dir länger schlecht geht, sprich mit jemandem, dem du vertraust, oder mit einer Fachperson.
     <br><br><span class="sig">白 &nbsp;Shiro&nbsp; 白</span>
@@ -973,6 +1005,21 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
     <div class="btn-row"><button class="btn primary" id="setClose" style="width:100%">Fertig</button></div>
   </div>
 </div>
+<div class="intro" id="schreiben">
+  <div class="intro-in">
+    <button class="ovx" id="tbX" aria-label="Schliessen">×</button>
+    <p class="eyebrow">Tagebuch</p>
+    <h2 class="title" style="font-size:28px" id="tbTitel">Was ist gerade?</h2>
+    <p class="lede">So viel oder so wenig du willst. Der Text bleibt auf deinem Gerät und wird nicht bewertet.</p>
+    <button class="anstoss" id="tbAnstossBtn"><span>Kein Anfang?</span><i id="tbAnstoss"></i></button>
+    <textarea id="tbText" rows="9" placeholder="Schreib einfach los …" style="margin-top:14px"></textarea>
+    <p class="move-hint" style="text-align:right;margin:6px 0 0" id="tbZaehler">0 / 4000</p>
+    <div class="btn-row">
+      <button class="btn primary" id="tbSpeichern" style="flex:1">Speichern</button>
+      <button class="btn ghost" id="tbAbbruch">Verwerfen</button>
+    </div>
+  </div>
+</div>
 <div class="intro" id="eintrag">
   <div class="intro-in">
     <button class="ovx" id="eintragX" aria-label="Schliessen">×</button>
@@ -980,7 +1027,8 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
     <div id="eintragBox"></div>
     <div class="btn-row" style="margin-top:22px">
       <button class="btn primary" id="eintragZu" style="flex:1">Schliessen</button>
-      <button class="btn ghost" id="eintragLoeschen">Diesen Eintrag löschen</button>
+      <button class="btn hidden" id="eintragBearbeiten">Bearbeiten</button>
+      <button class="btn ghost" id="eintragLoeschen">Löschen</button>
     </div>
   </div>
 </div>
@@ -1041,7 +1089,7 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
   <div class="intro-in">
     <p class="eyebrow">Willkommen</p>
     <h2 class="title" style="font-size:28px">Lumo in einer Minute</h2>
-    <p class="lede">Sechs Reiter, jeder mit einer Aufgabe. Alles bleibt auf deinem Gerät — es gibt kein Konto, und nichts wird verschickt.</p>
+    <p class="lede">Sieben Reiter, jeder mit einer Aufgabe. Alles bleibt auf deinem Gerät — es gibt kein Konto, und nichts wird verschickt.</p>
     <div class="ib"><span>✦</span><div><b>Basis</b>
       Dein Sternbild, Lumo und das Wetter. Lumo sagt dir hier einen Satz zu deinem Stand — antippen für einen neuen.</div></div>
     <div class="ib"><span>◐</span><div><b>Check-in</b>
@@ -1052,6 +1100,9 @@ body.ruhig .breathe,body.ruhig .bob,body.ruhig .spin,body.ruhig .spin-slow{anima
       Drei kleine Aufgaben zu deinem Zustand. Abhaken geht nicht: Timer laufen nur bei offener App, Outdoor-Quests messen per GPS, „weg vom Bildschirm" zählt nur, wenn du wirklich weg bist. Abschluss durch Gedrückthalten.</div></div>
     <div class="ib"><span>☾</span><div><b>Shop</b>
       XP und Gold kommen aus Quests. Dafür gibt es Skins, Umgebungen und Outfits für Lumo. Bloss behaupten, wie es dir geht, bringt wenig — nachgewiesene Arbeit bringt viel.</div></div>
+    <div class="ib"><span>✎</span><div><b>Tagebuch</b>
+      Schreib auf, was du willst — mit einem Anstoss, falls dir nichts einfällt. Zusammen mit den
+      Notizen aus deinen Check-ins ergibt das eine Zeitleiste zum Nachlesen.</div></div>
     <div class="ib"><span>◇</span><div><b>Verlauf</b>
       Der interessanteste Teil, aber erst nach ein paar Wochen: <i>Was bei dir wirkt</i> vergleicht deine Stimmung vor und nach jeder Sache. <i>Muster</i> sucht schwache Wochentage. <i>Klangbilder</i> macht aus jedem Monat ein Musikstück samt Cover. Dort liegen auch Sicherung und Vertrauensperson.</div></div>
     <div class="ib"><span>⚓</span><div><b>Anker</b>
@@ -1251,7 +1302,7 @@ const DEFAULT = {
   eq:{theme:"mitternacht", amb:"regen", pet:"lumo", szene:"nacht"},
   outfit:{kopf:null, aura:null, muster:null, augen:null}, ach0:{}, today:{day:null, n:0, last:0},
   stats:{breath:0, outdoor:0, journeys:0, steps:0, quests:0}, finds:{}, ach:[],
-  actions:[], effect:{}, lore:[], notiz:[], ruhig:false, logFilter:"alle", remind:{on:false, time:"19:00"}, mode:"up", repair:{week:null, used:false}, seenIntro:false, lang:null, trust:null,
+  actions:[], effect:{}, lore:[], notiz:[], ruhig:false, logFilter:"alle", journal:[], remind:{on:false, time:"19:00"}, mode:"up", repair:{week:null, used:false}, seenIntro:false, lang:null, trust:null,
   vol:0.7
 };
 let S = structuredClone(DEFAULT);
@@ -2154,6 +2205,7 @@ function renderLog(){
   $("#stCount").textContent  = S.history.length;
   $("#stQuests").textContent = S.questsDone;
   $("#stTime").textContent   = Math.round(S.musicSec/60) + " min";
+  $("#stNotiz").textContent  = alleEintraege().length;
   if(S.history.length){
     const avg = S.history.reduce((s,h)=>s+h.v,0)/S.history.length;
     $("#stAvg").textContent = (avg>0?"+":"") + avg.toFixed(2);
@@ -2165,8 +2217,13 @@ function renderTagebuch(){
   const list = $("#logList"); if(!list) return;
   list.innerHTML = "";
   const nurText = S.logFilter === "text";
-  const alle = [...S.history].sort((x,y) => y.ts - x.ts)     // Neueste zuerst, auch nach einer Sicherung
-                             .filter(h => !nurText || (h.txt && h.txt.trim()));
+  const roh = (S.logFilter === "text" || S.logFilter === "frei")
+    ? alleEintraege()
+    : [...S.history].map(h => ({ts:h.ts, txt:h.txt, v:h.v, a:h.a, w:h.w, quelle:h}))
+        .concat((S.journal||[]).map(j => ({ts:j.ts, txt:j.txt, v:j.v, a:j.a, frei:true,
+                                           bearbeitet:j.bearbeitet, quelle:j})))
+        .sort((x,y) => y.ts - x.ts);
+  const alle = S.logFilter === "frei" ? roh.filter(h => h.frei) : roh;
   if(!alle.length){
     list.innerHTML = '<div class="empty"><span class="big">✦</span>' +
       (nurText ? "Noch keine Einträge mit Notiz." : "Noch keine Einträge.") + "</div>";
@@ -2187,12 +2244,16 @@ function renderTagebuch(){
       list.appendChild(kopf);
     }
     const el = document.createElement("button");
-    el.className = "tb" + (h.txt && h.txt.trim() ? " hat-text" : "");
+    el.className = "tb" + (h.txt && h.txt.trim() ? " hat-text" : "") + (h.frei ? " frei" : "");
+    const werte = (typeof h.v === "number")
+      ? " · Stimmung " + (h.v>=0?"+":"") + h.v.toFixed(2) + " · Energie " + (h.a>=0?"+":"") + h.a.toFixed(2)
+      : "";
     el.innerHTML =
-      '<div class="tb-kopf"><img class="mface" src="' + moodFace(m, 34) + '" alt="' + m.n + '" width="34" height="34">' +
-      '<div class="tb-meta"><b>' + m.n + '</b><span>' +
-        d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr · Stimmung " +
-        (h.v>=0?"+":"") + h.v.toFixed(2) + " · Energie " + (h.a>=0?"+":"") + h.a.toFixed(2) +
+      '<div class="tb-kopf">' + (typeof h.v === "number"
+          ? '<img class="mface" src="' + moodFace(m, 34) + '" alt="" width="34" height="34">'
+          : '<span class="tb-stift">✎</span>') +
+      '<div class="tb-meta"><b>' + (h.frei ? "Notiz" : m.n) + '</b><span>' +
+        d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) + " Uhr" + werte +
       '</span></div></div>' +
       (h.txt && h.txt.trim() ? '<p class="tb-text">' + h.txt.replace(/</g,"&lt;") + "</p>" : "");
     el.onclick = () => eintragZeigen(h);
@@ -2222,11 +2283,22 @@ function eintragZeigen(h){
       '<div class="meter"><div class="k">Energie</div><div class="v">' + (h.a>=0?"+":"") + h.a.toFixed(2) + "</div></div>" +
       (w ? '<div class="meter"><div class="k">Wetter</div><div class="v" style="font-size:13px;line-height:1.4">' + w + "</div></div>" : "") +
     "</div>";
+  const q = h.quelle || h;
+  $("#eintragBearbeiten").classList.toggle("hidden", !h.frei);
+  $("#eintragBearbeiten").onclick = () => {
+    $("#eintrag").classList.remove("on");
+    setTimeout(() => tagebuchOeffnen(q), 160);
+  };
   $("#eintragLoeschen").onclick = () => {
-    const i = S.history.indexOf(h);
-    if(i < 0) return;
-    S.history.splice(i, 1);
-    if(!S.history.length) S.mood = null;
+    if(h.frei){
+      const i = S.journal.indexOf(q);
+      if(i >= 0) S.journal.splice(i, 1);
+    } else {
+      const i = S.history.indexOf(q);
+      if(i < 0) return;
+      S.history.splice(i, 1);
+      if(!S.history.length) S.mood = null;
+    }
     save(); renderTagebuch(); renderLog(); renderDash(); renderEffect(); renderPatterns(); renderPieces();
     $("#eintrag").classList.remove("on"); document.body.style.overflow = "";
     toast("Eintrag gelöscht");
@@ -2557,6 +2629,7 @@ function go(view){
   if(view === "quest") renderQuests();
   if(view === "shop")  renderShop();
   if(view === "log"){ renderLog(); renderAch(); renderEffect(); renderPatterns(); renderPieces(); }
+  if(view === "tage") renderTagebuch();
   if(view === "music"){ renderPlayer(); renderMobileMusic(); renderStageLinks(); }
   if(view === "check" && !CI.mood) showStep(1);
   window.scrollTo({top:0, behavior:"smooth"});
@@ -2667,6 +2740,8 @@ async function boot(){
   if(!(S.vol > .02)) S.vol = .7;
   const zu = id => { $("#"+id).classList.remove("on"); document.body.style.overflow = ""; };
   /* Alles Einstellbare wandert aus dem Verlauf in die eigene Ansicht */
+  const tbZiel = $("#tagebuchZiel"), tbBlock = $("#tagebuchBlock");
+  if(tbZiel && tbBlock) tbZiel.appendChild(tbBlock);      // Tagebuch bekommt seinen eigenen Reiter
   const setBody = $("#setBody");
   ["remindBox","trustBox","privacyBox","dataBox"].forEach(id => {
     const el = $("#"+id);
@@ -2685,6 +2760,14 @@ async function boot(){
     $$("#logSeg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
     renderTagebuch();
   });
+  $("#tbNeu").onclick = () => tagebuchOeffnen();
+  $("#tbX").onclick = () => zu("schreiben");
+  $("#tbAbbruch").onclick = () => { schreibtGerade = null; zu("schreiben"); };
+  $("#tbSpeichern").onclick = tagebuchSpeichern;
+  $("#tbText").addEventListener("input", tbZaehler);
+  $("#tbAnstossBtn").onclick = () => {
+    $("#tbAnstoss").textContent = ANSTOSS[Math.floor(Math.random()*ANSTOSS.length)];
+  };
   $("#eintragX").onclick = () => zu("eintrag");
   $("#eintragZu").onclick = () => zu("eintrag");
   $("#eintrag").addEventListener("click", e => { if(e.target.id === "eintrag") zu("eintrag"); });
@@ -2706,7 +2789,7 @@ async function boot(){
   $("#intro").addEventListener("click", e => { if(e.target.id === "intro") zu("intro"); });
   document.addEventListener("keydown", e => {
     if(e.key !== "Escape") return;
-    ["lore","intro","sheet","helpOv","settings","anker","eintrag"].forEach(id => { const el = $("#"+id); if(el && el.classList.contains("on")) zu(id); });
+    ["lore","intro","sheet","helpOv","settings","anker","eintrag","schreiben"].forEach(id => { const el = $("#"+id); if(el && el.classList.contains("on")) zu(id); });
   });
   renderLore(); checkLore(); renderNotizen(); checkNotiz(); ruhigAnwenden(); renderAnker(); renderEarly(); renderRemind(); renderPrivacy(); armRemind();
   if(Native.da()){                                     // Schritte des ganzen Tages aus dem System
@@ -6078,6 +6161,73 @@ function ruhigAnwenden(){
   if(t) t.textContent = S.ruhig
     ? "An: keine Punkte, keine Serie, keine Töne beim Antippen, keine Bewegung, und keine Quest schickt dich vor die Tür oder aus der App."
     : "Aus: Lumo zeigt Punkte, Serie und kleine Töne.";
+}
+
+/* =========================================================
+   TAGEBUCH — schreiben, wann du willst, nicht nur beim Check-in
+   ========================================================= */
+const ANSTOSS = [
+  "Was war heute anders als gestern?",
+  "Was hat heute länger gedauert, als es sollte?",
+  "Wem bist du heute begegnet?",
+  "Was hast du heute gehört, das dir geblieben ist?",
+  "Was hättest du heute gern gesagt?",
+  "Was war heute leichter als erwartet?",
+  "Wo warst du heute, ausser drinnen?",
+  "Was würdest du dem Morgen von heute sagen, wenn du könntest?",
+  "Was hat dich heute zum Schmunzeln gebracht, und sei es kurz?",
+  "Was liegt schon zu lange herum?",
+  "Was hat heute gut geschmeckt?",
+  "Was willst du dir für morgen merken?",
+  "Was hat dich heute überrascht?",
+  "Welcher Gedanke kam heute mehrmals wieder?"
+];
+let schreibtGerade = null;         // null = neuer Eintrag, sonst der bearbeitete
+
+function tagebuchOeffnen(eintrag){
+  schreibtGerade = eintrag || null;
+  $("#tbText").value = eintrag ? eintrag.txt : "";
+  $("#tbAnstoss").textContent = ANSTOSS[Math.floor(Math.random()*ANSTOSS.length)];
+  $("#tbTitel").textContent = eintrag ? "Eintrag bearbeiten" : "Was ist gerade?";
+  $("#tbSpeichern").textContent = eintrag ? "Änderung speichern" : "Speichern";
+  $("#schreiben").classList.add("on"); document.body.style.overflow = "hidden";
+  setTimeout(() => $("#tbText").focus(), 120);
+  tbZaehler();
+}
+function tbZaehler(){
+  const n = ($("#tbText").value || "").length;
+  $("#tbZaehler").textContent = n + " / 4000";
+  $("#tbSpeichern").disabled = n === 0;
+}
+function tagebuchSpeichern(){
+  const txt = ($("#tbText").value || "").trim().slice(0, 4000);
+  if(!txt) return;
+  if(schreibtGerade){
+    schreibtGerade.txt = txt;
+    schreibtGerade.bearbeitet = Date.now();
+    toast("Eintrag geändert");
+  } else {
+    const e = {ts: Date.now(), txt, frei: true};
+    const st = S.mood ? nearestMood(S.mood.v, S.mood.a) : null;
+    if(st && Date.now() - S.mood.ts < 6*3600*1000){ e.v = S.mood.v; e.a = S.mood.a; }
+    S.journal.push(e);
+    if(S.journal.length > 500) S.journal.shift();
+    S.stats.notizen = (S.stats.notizen || 0) + 1;
+    chime("find");
+    const w = txt.split(/\s+/).length;
+    toast(w > 60 ? "Gespeichert — das war ausführlich." : "Gespeichert.");
+  }
+  schreibtGerade = null; save();
+  $("#schreiben").classList.remove("on"); document.body.style.overflow = "";
+  renderTagebuch(); renderLog();
+}
+/* Check-in-Notizen und freie Einträge in einer Liste */
+function alleEintraege(){
+  const ausCheckin = S.history.filter(h => h.txt && h.txt.trim())
+    .map(h => ({ts:h.ts, txt:h.txt, v:h.v, a:h.a, w:h.w, quelle:h}));
+  const frei = (S.journal || []).map(j => ({ts:j.ts, txt:j.txt, v:j.v, a:j.a, frei:true,
+                                            bearbeitet:j.bearbeitet, quelle:j}));
+  return ausCheckin.concat(frei).sort((x,y) => y.ts - x.ts);
 }
 
 boot();
