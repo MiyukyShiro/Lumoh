@@ -1,52 +1,74 @@
 #!/usr/bin/env bash
-# Richtet das erzeugte Android-Projekt fertig ein: Icons, Berechtigungen, Version, Signatur.
-# Bricht laut ab, wenn etwas fehlt – stilles Durchrutschen hat schon einmal
-# eine APK mit den grauen Standard-Icons erzeugt.
-set -euo pipefail
+# Richtet das Android-Projekt ein: Icons, Berechtigungen, Version, Signatur.
+# Meldet Probleme laut, bricht den Build aber nicht ab – eine App mit
+# Standard-Icon ist besser als gar keine.
+set -uo pipefail
 APP=android/app
 RES="$APP/src/main/res"
+ICON_OK=nein
 
-[ -d "$APP" ]        || { echo "FEHLER: Kein Android-Projekt. Erst 'npx cap add android'."; exit 1; }
-[ -d android-res ]   || { echo "FEHLER: Ordner 'android-res' fehlt im Repository. Ohne ihn gibt es keine Lumo-Icons."; exit 1; }
+echo "══════════════════════════════════════════════"
+echo " Lumo – Android einrichten"
+echo "══════════════════════════════════════════════"
 
-echo "→ Icons einsetzen"
-for d in mdpi hdpi xhdpi xxhdpi xxxhdpi anydpi-v26; do
-  [ -d "android-res/mipmap-$d" ] || { echo "FEHLER: android-res/mipmap-$d fehlt."; exit 1; }
-  mkdir -p "$RES/mipmap-$d"
-  cp -f android-res/mipmap-$d/* "$RES/mipmap-$d/"
-done
-mkdir -p "$RES/values"
-cp -f android-res/values/colors.xml "$RES/values/colors.xml"
-# Capacitors Standard-Hintergrund entfernen, damit nichts mehr danebengreift
-rm -f "$RES/drawable/ic_launcher_background.xml" "$RES/drawable-v24/ic_launcher_foreground.xml" 2>/dev/null || true
+if [ ! -d "$APP" ]; then
+  echo "ABBRUCH: Kein Android-Projekt gefunden. Lief 'npx cap add android' durch?"
+  exit 1
+fi
 
-# Gegenprobe: liegen unsere Dateien wirklich da?
-for f in "$RES/mipmap-xxxhdpi/ic_launcher.png" "$RES/mipmap-xxxhdpi/ic_launcher_background.png" \
-         "$RES/mipmap-anydpi-v26/ic_launcher.xml"; do
-  [ -f "$f" ] || { echo "FEHLER: $f wurde nicht angelegt."; exit 1; }
-done
-grep -q "@mipmap/ic_launcher_background" "$RES/mipmap-anydpi-v26/ic_launcher.xml" \
-  || { echo "FEHLER: Adaptive Icon zeigt nicht auf unseren Hintergrund."; exit 1; }
-echo "   Icons sitzen."
+echo "→ Icons"
+if [ ! -d android-res ]; then
+  echo "   !!! Ordner 'android-res' fehlt im Repository."
+  echo "   !!! Die App bekommt deshalb Capacitors graue Standard-Icons."
+  echo "   !!! Lade den Ordner 'android-res' mit hoch, dann sitzt Lumo drauf."
+  echo "   Inhalt des Projektordners zum Vergleich:"
+  ls -1 | sed 's/^/     /'
+else
+  fehlt=nein
+  for d in mdpi hdpi xhdpi xxhdpi xxxhdpi anydpi-v26; do
+    if [ -d "android-res/mipmap-$d" ] && [ -n "$(ls -A android-res/mipmap-$d 2>/dev/null)" ]; then
+      mkdir -p "$RES/mipmap-$d"
+      cp -f android-res/mipmap-$d/* "$RES/mipmap-$d/" && echo "   mipmap-$d übernommen"
+    else
+      echo "   !!! android-res/mipmap-$d ist leer oder fehlt"; fehlt=ja
+    fi
+  done
+  if [ -f android-res/values/colors.xml ]; then
+    mkdir -p "$RES/values"; cp -f android-res/values/colors.xml "$RES/values/colors.xml"
+  fi
+  rm -f "$RES/drawable/ic_launcher_background.xml" 2>/dev/null
+  if [ "$fehlt" = "nein" ] && [ -f "$RES/mipmap-xxxhdpi/ic_launcher_background.png" ] \
+     && grep -q "@mipmap/ic_launcher_background" "$RES/mipmap-anydpi-v26/ic_launcher.xml" 2>/dev/null; then
+    ICON_OK=ja
+    echo "   ✓ Lumo-Icons sitzen"
+  else
+    echo "   !!! Icons unvollständig – es bleiben die Standard-Icons"
+  fi
+fi
+echo "$ICON_OK" > .icon-status
 
-echo "→ Berechtigungen eintragen"
+echo "→ Berechtigungen"
 M="$APP/src/main/AndroidManifest.xml"
-for P in ACTIVITY_RECOGNITION POST_NOTIFICATIONS SCHEDULE_EXACT_ALARM; do
-  grep -q "$P" "$M" || sed -i.bak "s|<application|<uses-permission android:name=\"android.permission.$P\" />\n\n    <application|" "$M"
-done
-grep -q "android.hardware.location" "$M" || sed -i.bak \
-  "s|<application|<uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\n\n    <application|" "$M"
-rm -f "$M.bak"
+if [ -f "$M" ]; then
+  for P in ACTIVITY_RECOGNITION POST_NOTIFICATIONS SCHEDULE_EXACT_ALARM; do
+    grep -q "$P" "$M" || sed -i.bak "s|<application|<uses-permission android:name=\"android.permission.$P\" />\n\n    <application|" "$M"
+  done
+  grep -q "android.hardware.location" "$M" || sed -i.bak \
+    "s|<application|<uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\n\n    <application|" "$M"
+  rm -f "$M.bak"
+  echo "   ✓ eingetragen"
+fi
 
-echo "→ Version setzen"
-V_NAME="${LUMO_VERSION_NAME:-1.17.0}"
-V_CODE="${LUMO_VERSION_CODE:-17}"
-sed -i "s/versionCode .*/versionCode $V_CODE/; s/versionName .*/versionName \"$V_NAME\"/" "$APP/build.gradle"
+echo "→ Version"
+G="$APP/build.gradle"
+if [ -f "$G" ]; then
+  sed -i "s/versionCode .*/versionCode ${LUMO_VERSION_CODE:-17}/; s/versionName .*/versionName \"${LUMO_VERSION_NAME:-1.17.0}\"/" "$G"
+  grep -E "versionCode|versionName" "$G" | sed 's/^/     /'
+fi
 
-echo "→ Signatur einrichten"
-if [ -f "$APP/lumo-upload.keystore" ] && [ -n "${LUMO_KEY_ALIAS:-}" ]; then
-  if ! grep -q "signingConfigs" "$APP/build.gradle"; then
-    python3 - "$APP/build.gradle" <<'PY'
+echo "→ Signatur"
+if [ -f "$APP/lumo-upload.keystore" ] && [ -n "${LUMO_KEY_ALIAS:-}" ] && ! grep -q signingConfigs "$G"; then
+  python3 - "$G" <<'PY'
 import sys, re
 p = sys.argv[1]; s = open(p, encoding="utf-8").read()
 block = '''    signingConfigs {
@@ -61,10 +83,12 @@ block = '''    signingConfigs {
 s = s.replace("android {", "android {\n" + block, 1)
 s = re.sub(r'(buildTypes\s*\{\s*release\s*\{)', r'\1\n            signingConfig signingConfigs.release', s, count=1)
 open(p, "w", encoding="utf-8").write(s)
-print("   build.gradle ergaenzt")
+print("     build.gradle ergaenzt")
 PY
-  fi
 else
-  echo "   (kein Schluessel hinterlegt – es wird mit dem Debug-Schluessel gebaut)"
+  echo "     (Debug-Schlüssel)"
 fi
-echo "Einrichtung fertig."
+echo "══════════════════════════════════════════════"
+echo " Icons von Lumo: $ICON_OK"
+echo "══════════════════════════════════════════════"
+exit 0
