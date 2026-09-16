@@ -4,6 +4,18 @@ on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+    inputs:
+      veroeffentlichen:
+        description: 'APK als Download-Link veröffentlichen (ohne Konto abrufbar)?'
+        type: boolean
+        default: false
+      version:
+        description: 'Versionsname für den Link, z. B. 1.17'
+        required: false
+        default: '1.17'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -23,10 +35,7 @@ jobs:
       - name: Umgebung prüfen
         run: |
           node -v && npm -v && java -version
-          echo "--- Dateien im Projekt ---"
           ls -la
-          echo "--- Inhalt von docs/ ---"
-          ls -la docs || echo "FEHLER: Ordner docs fehlt"
           test -f docs/index.html || { echo "FEHLER: docs/index.html fehlt"; exit 1; }
           test -f capacitor.config.json || { echo "FEHLER: capacitor.config.json fehlt"; exit 1; }
 
@@ -36,8 +45,8 @@ jobs:
       - name: Android-Projekt erzeugen
         run: npx cap add android
 
-      - name: Berechtigung für den Schrittzähler
-        run: bash scripts/android-manifest.sh || echo "Übersprungen"
+      - name: Icons und Berechtigungen
+        run: bash scripts/android-setup.sh
 
       - name: Web-Dateien übernehmen
         run: npx cap sync android
@@ -47,9 +56,33 @@ jobs:
           chmod +x android/gradlew
           cd android && ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Gegenprobe – steckt das Lumo-Icon wirklich drin?
+        run: |
+          A=android/app/build/outputs/apk/debug/app-debug.apk
+          unzip -l "$A" | grep -q "mipmap-xxxhdpi.*ic_launcher_background.png" \
+            || { echo "FEHLER: In der APK fehlt der Icon-Hintergrund – es wären die Standard-Icons drin."; exit 1; }
+          echo "Icon-Dateien in der APK:"
+          unzip -l "$A" | grep mipmap | head -20
+
       - name: APK hochladen
         uses: actions/upload-artifact@v4
         with:
           name: Lumo-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Als Download-Link veröffentlichen
+        if: github.event_name == 'workflow_dispatch' && inputs.veroeffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="v${{ inputs.version }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "Lumo-$V.apk"
+          gh release delete "$V" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$V" "Lumo-$V.apk" --title "Lumo $V" --notes "Android-App zum Ausprobieren.
+
+          **Installieren:** Die Datei unten antippen, herunterladen und öffnen. Android fragt einmal, ob es Apps aus dieser Quelle installieren darf — das erlauben.
+
+          Kein Konto nötig. Alle Daten bleiben auf deinem Gerät. Wer lieber nichts installiert, öffnet die Webseite des Projekts."
+          echo "Fertig. Link:"
+          gh release view "$V" --json url -q .url
