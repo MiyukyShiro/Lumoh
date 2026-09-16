@@ -1,7 +1,7 @@
 /* Lumo Service Worker
    WICHTIG: index.html wird zuerst aus dem Netz geholt, damit eine neue Fassung
    sofort ankommt. Der Cache ist nur der Rückfall, wenn du offline bist. */
-const CACHE = "lumo-v24";
+const CACHE = "lumo-v27";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./apple-touch-icon.png", "./apple-touch-icon-180.png"];
 
