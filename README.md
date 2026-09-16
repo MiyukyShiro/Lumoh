@@ -23,9 +23,13 @@ die brauchen alle eine `https`-Adresse.
 
 ---
 
-## Weg 2 — Echte APK, ohne irgendetwas zu installieren
+## Weg 2 — Echte APK, ohne Android Studio
 
-GitHub baut die App für dich in der Cloud. Du brauchst kein Android Studio.
+GitHub baut die App für dich in der Cloud. Auf deinem Rechner musst du nichts installieren.
+
+**Ein GitHub-Konto brauchst du trotzdem** — zum Anlegen des Repositories, zum Starten
+des Builds und zum Herunterladen der fertigen Datei. Das ist kostenlos.
+Deine Tester brauchen dagegen keins, siehe „Weitergeben ohne Konto" weiter unten.
 
 1. Repository anlegen wie oben, aber **den ganzen Projektordner** hochladen
    (also `docs/`, `resources/`, `scripts/`, `package.json`, `capacitor.config.json`, `.github/`).
@@ -37,6 +41,24 @@ GitHub baut die App für dich in der Cloud. Du brauchst kein Android Studio.
 
 Die APK ist mit einem Debug-Schlüssel signiert: gut für dich und Freunde,
 nicht für den Play Store. Dafür brauchst du einen eigenen Signaturschlüssel.
+
+### Weitergeben ohne Konto
+
+Artefakte aus Actions kann nur herunterladen, wer bei GitHub angemeldet ist.
+Für Freunde und Tester gibt es deshalb den Veröffentlichen-Weg:
+
+*Actions → „Lumo APK bauen" → Run workflow* — dort den Haken bei
+**„APK als Download-Link veröffentlichen"** setzen und eine Version eintragen.
+
+Der Build legt danach unter *Releases* einen Eintrag mit der APK an. Diesen Link
+kann jeder öffnen und die Datei herunterladen, ohne Konto und ohne Anmeldung:
+
+```
+https://github.com/DEINNAME/mindquest/releases/latest
+```
+
+Für iPhone-Nutzer bleibt die Webseite der richtige Weg — dort ist ohnehin kein
+Konto nötig.
 
 ---
 
