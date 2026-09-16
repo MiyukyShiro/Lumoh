@@ -890,7 +890,7 @@ select{border-radius:999px}
 
   <footer class="foot">
     <button class="btn ghost" id="helpLink" style="font-size:12.5px;padding:9px 16px;margin-bottom:12px">Notfall-Nummern</button><br>
-    <span id="buildTag" style="font-family:var(--font-mono);letter-spacing:.1em">v1.11 · Testphase</span><br>
+    <span id="buildTag" style="font-family:var(--font-mono);letter-spacing:.1em">v1.12 · Testphase</span><br>
     Lumo ist ein Selbsthilfe-Werkzeug und ersetzt keine Therapie.<br>
     Wenn es dir länger schlecht geht, sprich mit jemandem, dem du vertraust, oder mit einer Fachperson.
     <br><br><span class="sig">白 &nbsp;Shiro&nbsp; 白</span>
@@ -2585,34 +2585,54 @@ function iconDataURL(size){
   const c = document.createElement("canvas"); c.width = c.height = size;
   const x = c.getContext("2d"), S = size;
   const g = x.createLinearGradient(0,0,0,S);
-  g.addColorStop(0,"#1a123a"); g.addColorStop(1,"#090716");
+  g.addColorStop(0,"#2e2260"); g.addColorStop(1,"#120e30");
   x.fillStyle = g; x.fillRect(0,0,S,S);
-  x.fillStyle = "rgba(255,246,216,.8)";
-  [[.17,.20,.011],[.83,.16,.014],[.88,.72,.010],[.12,.78,.012],[.5,.09,.009],[.3,.13,.008]]
+  const warm = x.createRadialGradient(S/2, S*0.52, 0, S/2, S*0.52, S*0.5);
+  warm.addColorStop(0,"rgba(120,160,255,.30)"); warm.addColorStop(1,"transparent");
+  x.fillStyle = warm; x.fillRect(0,0,S,S);
+  x.fillStyle = "rgba(255,250,228,.9)";
+  [[.17,.20,.010],[.83,.16,.013],[.88,.72,.009],[.12,.78,.011],[.5,.08,.008],[.3,.13,.007]]
     .forEach(([px,py,r]) => { x.beginPath(); x.arc(S*px, S*py, S*r, 0, 6.283); x.fill(); });
   const P = (px,py) => [px/160*S, py/160*S];
-  const bg = x.createLinearGradient(0,0,0,S);
-  bg.addColorStop(0,"#9ec1ff"); bg.addColorStop(1,"#5f7dff");
-  x.fillStyle = bg; x.beginPath();
-  const [sx,sy] = P(80,34);
-  x.moveTo(sx,sy);
-  x.bezierCurveTo(...P(110,34), ...P(126,56), ...P(126,80));
-  x.bezierCurveTo(...P(126,106), ...P(106,124), ...P(80,124));
-  x.bezierCurveTo(...P(54,124), ...P(34,106), ...P(34,80));
-  x.bezierCurveTo(...P(34,56), ...P(50,34), ...P(80,34));
-  x.closePath(); x.fill();
-  x.fillStyle = "#12102a";
-  [[66,62],[94,62]].forEach(([ex,ey]) => {
+  const koerper = () => {
+    x.beginPath(); const [sx,sy] = P(80,34); x.moveTo(sx,sy);
+    x.bezierCurveTo(...P(110,34), ...P(126,56), ...P(126,80));
+    x.bezierCurveTo(...P(126,106), ...P(106,124), ...P(80,124));
+    x.bezierCurveTo(...P(54,124), ...P(34,106), ...P(34,80));
+    x.bezierCurveTo(...P(34,56), ...P(50,34), ...P(80,34));
+    x.closePath();
+  };
+  x.save();
+  x.shadowColor = "rgba(150,190,255,.85)"; x.shadowBlur = S*0.09;
+  const bg = x.createLinearGradient(0, S*0.2, 0, S*0.8);
+  bg.addColorStop(0,"#c4e2ff"); bg.addColorStop(1,"#6896ff");
+  x.fillStyle = bg; koerper(); x.fill(); x.fill();
+  x.restore();
+  x.strokeStyle = "rgba(226,242,255,.6)"; x.lineWidth = S*0.009; koerper(); x.stroke();
+  x.fillStyle = "#18163a";
+  [[65.5,61],[94.5,61]].forEach(([ex,ey]) => {
     const [cx2,cy2] = P(ex,ey);
-    x.beginPath(); x.ellipse(cx2, cy2, S*0.034, S*0.039, 0, 0, 6.283); x.fill();
+    x.beginPath(); x.ellipse(cx2, cy2, S*0.036, S*0.042, 0, 0, 6.283); x.fill();
   });
-  x.fillStyle = "rgba(255,255,255,.9)";
-  [[67.8,60],[95.8,60]].forEach(([ex,ey]) => {
-    const [cx2,cy2] = P(ex,ey);
-    x.beginPath(); x.arc(cx2, cy2, S*0.012, 0, 6.283); x.fill();
+  x.fillStyle = "rgba(255,255,255,.95)";
+  [[63.4,57.4],[92.4,57.4]].forEach(([ex,ey]) => {
+    const [cx2,cy2] = P(ex,ey); x.beginPath(); x.arc(cx2, cy2, S*0.013, 0, 6.283); x.fill();
   });
-  x.strokeStyle = "#12102a"; x.lineWidth = S*0.019; x.lineCap = "round";
-  x.beginPath(); x.moveTo(...P(66,84)); x.lineTo(...P(94,84)); x.stroke();
+  x.strokeStyle = "#18163a"; x.lineWidth = S*0.021; x.lineCap = "round";
+  x.beginPath();
+  for(let i=0;i<=40;i++){
+    const [mx,my] = P(64 + i*32/40, 80 + 11*Math.sin(Math.PI*i/40));
+    i ? x.lineTo(mx,my) : x.moveTo(mx,my);
+  }
+  x.stroke();
+  x.fillStyle = "#ffd67a";
+  [[28,40,3.2],[132,52,2.4],[118,116,2.8]].forEach(([px,py,r]) => {
+    const [fx,fy] = P(px,py), rr = r/160*S;
+    x.lineWidth = rr*0.8; x.strokeStyle = "#ffd67a";
+    x.beginPath(); x.moveTo(fx-rr*2.4, fy); x.lineTo(fx+rr*2.4, fy);
+    x.moveTo(fx, fy-rr*2.4); x.lineTo(fx, fy+rr*2.4); x.stroke();
+    x.beginPath(); x.arc(fx, fy, rr*0.7, 0, 6.283); x.fill();
+  });
   return c.toDataURL("image/png");
 }
 function installManifest(){
