@@ -1,0 +1,62 @@
+name: Lumo IPA bauen (unsigniert)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Umgebung prüfen
+        run: |
+          node -v && npm -v
+          xcodebuild -version
+          pod --version || echo "CocoaPods fehlt"
+          test -f docs/index.html || { echo "FEHLER: docs/index.html fehlt"; exit 1; }
+          test -f capacitor.config.json || { echo "FEHLER: capacitor.config.json fehlt"; exit 1; }
+
+      - name: Capacitor installieren
+        run: npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/ios@7
+
+      - name: iOS-Projekt erzeugen
+        run: npx cap add ios
+
+      - name: Pods sicherstellen
+        run: |
+          cd ios/App
+          pod install --repo-update || pod install
+
+      - name: Berechtigungen eintragen
+        run: bash scripts/ios-plist.sh
+
+      - name: Web-Dateien übernehmen
+        run: npx cap sync ios
+
+      - name: Ohne Signatur bauen
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/build/App.xcarchive" archive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" PROVISIONING_PROFILE_SPECIFIER="" \
+            ONLY_ACTIVE_ARCH=NO
+
+      - name: IPA packen
+        run: |
+          mkdir -p Payload
+          cp -R build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -qr Lumo-unsigned.ipa Payload
+          ls -lh Lumo-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lumo-IPA-unsigniert
+          path: Lumo-unsigned.ipa
+          if-no-files-found: error
