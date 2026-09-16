@@ -1,0 +1,104 @@
+name: Lumo APK bauen
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      veroeffentlichen:
+        description: 'APK als Download-Link veröffentlichen (ohne Konto abrufbar)?'
+        type: boolean
+        default: false
+      version:
+        description: 'Versionsname für den Link'
+        required: false
+        default: '1.17'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Capacitor installieren
+        run: npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Android-Projekt erzeugen
+        run: npx cap add android
+
+      - name: Lumo-Icons einsetzen
+        run: |
+          RES=android/app/src/main/res
+          if [ -d android-res ]; then
+            for d in mdpi hdpi xhdpi xxhdpi xxxhdpi anydpi-v26; do
+              if [ -d "android-res/mipmap-$d" ]; then
+                mkdir -p "$RES/mipmap-$d"
+                cp -f android-res/mipmap-$d/* "$RES/mipmap-$d/" || true
+                echo "  mipmap-$d übernommen"
+              fi
+            done
+            [ -f android-res/values/colors.xml ] && cp -f android-res/values/colors.xml "$RES/values/colors.xml"
+            rm -f "$RES/drawable/ic_launcher_background.xml"
+            if [ -f "$RES/mipmap-xxxhdpi/ic_launcher_background.png" ]; then
+              echo "✓ Lumo-Icons sitzen"
+            else
+              echo "!! Icons unvollständig – es bleiben die Standard-Icons"
+            fi
+          else
+            echo "!! Ordner android-res fehlt – es bleiben die Standard-Icons"
+          fi
+
+      - name: Berechtigungen eintragen
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          for P in ACTIVITY_RECOGNITION POST_NOTIFICATIONS SCHEDULE_EXACT_ALARM; do
+            grep -q "$P" "$M" || sed -i "s|<application|<uses-permission android:name=\"android.permission.$P\" />\n\n    <application|" "$M"
+          done
+          grep -q "android.hardware.location" "$M" || sed -i "s|<application|<uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\n\n    <application|" "$M"
+          echo "Eingetragen:"
+          grep -o 'android.permission.[A-Z_]*' "$M" | sort -u
+
+      - name: Web-Dateien übernehmen
+        run: npx cap sync android
+
+      - name: APK bauen
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Icon-Kontrolle
+        run: |
+          A=android/app/build/outputs/apk/debug/app-debug.apk
+          if unzip -l "$A" | grep -q "mipmap-xxxhdpi.*ic_launcher_background.png"; then
+            echo "✓ Das Lumo-Icon ist in der APK."
+          else
+            echo "!! In der APK stecken die grauen Standard-Icons."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lumo-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Als Download-Link veröffentlichen
+        if: github.event_name == 'workflow_dispatch' && inputs.veroeffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="v${{ inputs.version }}"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "Lumo-$V.apk"
+          gh release delete "$V" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$V" "Lumo-$V.apk" --title "Lumo $V" --notes "Android-App zum Ausprobieren. Datei antippen, herunterladen, öffnen. Android fragt einmal nach der Erlaubnis für diese Quelle. Kein Konto nötig, alle Daten bleiben auf deinem Gerät."
